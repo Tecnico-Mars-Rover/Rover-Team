@@ -50,14 +50,14 @@ Crr_rock      = 0.10;  % Coef. rolamento rocha firme            [-]
 % --- Energia ---
 g             = 9.81;  % Gravidade                              [m/s^2]
 eta           = 0.5; % Eficiência BLDC 24V (bateria -> roda)  [-]
-P_electronics = 50;    % Consumo base eletrónica                [W]
+P_electronics = 50;    % Consumo base eletrónica (consumo de todos os outros sistemas não relacionados com tração)   [W]
 V_bat         = 48;    % Tensão nominal do pack                 [V]
 DOD_max       = 0.80;  % Profundidade descarga máxima           [-]
 
 % --- Simulação ---
 dt            = 0.1;   % Passo de tempo                         [s]
 t_total       = 3600;  % Duração total (60 min)                 [s]
-rng_seed      = 42;    % Semente para reprodutibilidade         [-]
+rng_seed      = 42;    % Semente para reprodutibilidade (garante que os numeros aletorios são sempre os mesmos)      [-]
 
 %% =========================================================================
 %  2) VETOR DE TEMPO
@@ -102,18 +102,18 @@ kf_theta_norm = [ ...
   0.286  -0.357   0.429  -0.286   0.250  -0.357   0.143  ...
   0.107   0.214   0.143   0.071   0.036   0.000   0.000 ];
 
-% --- Validações ---
+% --- Validações (coisas como dois vetores terem o mesmo numero de pontos se não cancela o codigo) ---
 assert(length(kf_t) == length(kf_theta_norm), ...
     'kf_t (%d) != kf_theta_norm (%d)', length(kf_t), length(kf_theta_norm));
 assert(all(diff(kf_t) > 0), 'kf_t nao e estritamente crescente');
 assert(max(abs(kf_theta_norm)) <= 1.0 + 1e-9, 'kf_theta_norm fora de [-1,+1]');
 
-% --- Escalar e interpolar ---
+% --- Escalar e interpolar (transforma os pontos definidos manualmente → terreno contínuo) ---
 theta_base_deg = interp1(kf_t, kf_theta_norm * theta_max_deg, t, 'pchip');
 
 % --- Micro-rugosidades do solo ---
 rng(rng_seed);
-noise_amp  = theta_max_deg * 0.05;
+noise_amp  = theta_max_deg * 0.05;  % 45 * 0.05 = 2.25º de inregularidade max
 noise_hf   = movmean(noise_amp * randn(1, N), 20);
 noise_mf   = movmean(noise_amp * 0.4 * sin(2*pi*t/55 + randn(1,N)*0.4), 50);
 theta_deg_sim = max(-theta_max_deg, min(theta_max_deg, theta_base_deg + noise_hf + noise_mf));
